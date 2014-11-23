@@ -27,7 +27,7 @@ import (
 func main() {
 	opts := cli.MustParseFlags()
 
-	bd := broker.NewBrokerDispatcher(opts.Address, opts.Cmd, opts.PerTube)
+	bd := broker.NewBrokerDispatcher(opts.Address, opts.MongoDBUrl, opts.Cmd, opts.PerTube)
 
 	if opts.All {
 		bd.RunAllTubes()

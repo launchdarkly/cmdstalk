@@ -29,6 +29,9 @@ type Options struct {
 
 	// The beanstalkd tubes to watch.
 	Tubes TubeList
+
+	// The mongo address for recording job status
+	MongoDBUrl string
 }
 
 // TubeList is a list of beanstalkd tube names.
@@ -55,6 +58,7 @@ func ParseFlags() (o Options, err error) {
 	flag.StringVar(&o.Cmd, "cmd", "", "Command to run in worker.")
 	flag.Uint64Var(&o.PerTube, "per-tube", 1, "Number of workers per tube.")
 	flag.Var(&o.Tubes, "tubes", "Comma separated list of tubes.")
+	flag.StringVar(&o.MongoDBUrl, "mongodb-url", "127.0.0.1:27017", "mongo DB url")
 	flag.Parse()
 
 	err = validateOptions(o)

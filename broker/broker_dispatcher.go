@@ -1,10 +1,9 @@
 package broker
 
 import (
+	"github.com/kr/beanstalk"
 	"log"
 	"time"
-
-	"github.com/kr/beanstalk"
 )
 
 const (
@@ -18,19 +17,27 @@ const (
 // created. The `perTube` option determines how many brokers are started for
 // each tube.
 type BrokerDispatcher struct {
-	address string
-	cmd     string
-	conn    *beanstalk.Conn
-	perTube uint64
-	tubeSet map[string]bool
+	address  string
+	cmd      string
+	conn     *beanstalk.Conn
+	recorder *Recorder
+	perTube  uint64
+	tubeSet  map[string]bool
 }
 
-func NewBrokerDispatcher(address, cmd string, perTube uint64) *BrokerDispatcher {
+func NewBrokerDispatcher(address, mongoUrl, cmd string, perTube uint64) *BrokerDispatcher {
+	recorder, err := NewRecorder(mongoUrl)
+
+	if err != nil {
+		panic("Unable to connect to MongoDB")
+	}
+
 	return &BrokerDispatcher{
-		address: address,
-		cmd:     cmd,
-		perTube: perTube,
-		tubeSet: make(map[string]bool),
+		address:  address,
+		cmd:      cmd,
+		recorder: recorder,
+		perTube:  perTube,
+		tubeSet:  make(map[string]bool),
 	}
 }
 
@@ -73,10 +80,23 @@ func (bd *BrokerDispatcher) RunAllTubes() (err error) {
 }
 
 func (bd *BrokerDispatcher) runBroker(tube string, slot uint64) {
+	results := make(chan *JobResult)
 	go func() {
-		b := New(bd.address, tube, slot, bd.cmd, nil)
+		b := New(bd.address, tube, slot, bd.cmd, results)
 		b.Run(nil)
 	}()
+
+	go func() {
+		for {
+			jobResult := <-results
+			err := bd.recorder.UpdateRecord(*jobResult)
+			if err != nil {
+				log.Println(err)
+			}
+		}
+	}()
+
+	//
 }
 
 func (bd *BrokerDispatcher) watchNewTubes() (err error) {
