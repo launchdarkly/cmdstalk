@@ -10,9 +10,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/99designs/cmdstalk/bs"
-	"github.com/99designs/cmdstalk/cmd"
 	"github.com/kr/beanstalk"
+	"github.com/launchdarkly/cmdstalk/bs"
+	"github.com/launchdarkly/cmdstalk/cmd"
 )
 
 const (

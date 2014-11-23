@@ -20,8 +20,8 @@
 package main
 
 import (
-	"github.com/99designs/cmdstalk/broker"
-	"github.com/99designs/cmdstalk/cli"
+	"github.com/launchdarkly/cmdstalk/broker"
+	"github.com/launchdarkly/cmdstalk/cli"
 )
 
 func main() {
