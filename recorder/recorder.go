@@ -40,9 +40,11 @@ type JobEntry struct {
 }
 
 type JobRecord struct {
-	Owner   string     `bson:"owner,omitempty"`
-	JobId   uint64     `bson:"jobId"`
-	Entries []JobEntry `bson:"entries"`
+	Owner   string      `bson:"owner,omitempty"`
+	JobId   uint64      `bson:"jobId"`
+	Cmd     string      `bson:"cmd"`
+	Entries []JobEntry  `bson:"entries"`
+	Data    interface{} `bson:"data"`
 }
 
 const (
@@ -99,7 +101,7 @@ func createIndices(coll *mgo.Collection) (err error) {
 	return
 }
 
-func (r *JobRecorder) RecordJob(owner string, id uint64) (err error) {
+func (r *JobRecorder) RecordJob(owner string, id uint64, cmd string, data interface{}) (err error) {
 	db := r.session.Clone().DB("gonfalon")
 	defer db.Session.Close()
 
@@ -108,7 +110,7 @@ func (r *JobRecorder) RecordJob(owner string, id uint64) (err error) {
 		Timestamp: ftime.Now(),
 	}
 
-	_, err = jobs(db).Upsert(bson.M{"jobId": id}, bson.M{"$set": bson.M{"jobId": id, "owner": owner}, "$push": bson.M{"entries": bson.M{"$each": []JobEntry{entry}, "$position": 0}}})
+	_, err = jobs(db).Upsert(bson.M{"jobId": id}, bson.M{"$set": bson.M{"jobId": id, "owner": owner, "data": data, "cmd": cmd}, "$push": bson.M{"entries": bson.M{"$each": []JobEntry{entry}, "$position": 0}}})
 
 	return
 }

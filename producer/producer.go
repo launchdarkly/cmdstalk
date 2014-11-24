@@ -43,7 +43,7 @@ func (p *JobProducer) RegisterJob(cmd, owner string, pri uint32, delay, ttr time
 		return 0, err
 	}
 
-	err = p.recorder.RecordJob(owner, id)
+	err = p.recorder.RecordJob(owner, id, cmd, jsonData)
 
 	return
 }
