@@ -1,10 +1,35 @@
-package broker
+package recorder
 
 import (
 	"github.com/launchdarkly/foundation/ftime"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 )
+
+type JobResult struct {
+
+	// Buried is true if the job was buried.
+	Buried bool
+
+	// Executed is true if the job command was executed (or attempted).
+	Executed bool
+
+	// ExitStatus of the command; 0 for success.
+	ExitStatus int
+
+	// JobId from beanstalkd.
+	JobId uint64
+
+	// Stdout of the command.
+	Stdout []byte
+
+	// TimedOut indicates the worker exceeded TTR for the job.
+	// Note this is tracked by a timer, separately to beanstalkd.
+	TimedOut bool
+
+	// Error raised while attempting to handle the job.
+	Error error
+}
 
 type JobEntry struct {
 	Status    string           `bson:"status,omitempty"`
@@ -31,7 +56,7 @@ type Recorder struct {
 	coll *mgo.Collection
 }
 
-func NewRecorder(url string) (recorder *Recorder, err error) {
+func NewJobRecorder(url string) (recorder *Recorder, err error) {
 	var session *mgo.Session
 	session, err = mgo.Dial(url)
 
@@ -74,7 +99,7 @@ func createIndices(coll *mgo.Collection) (err error) {
 	return
 }
 
-func (r *Recorder) CreateRecord(owner string, id uint64) (err error) {
+func (r *Recorder) CreateJobRecord(owner string, id uint64) (err error) {
 	entry := JobEntry{
 		Status:    pending,
 		Timestamp: ftime.Now(),
@@ -105,7 +130,7 @@ func exitCode(result JobResult) *int {
 	}
 }
 
-func (r *Recorder) UpdateRecord(result JobResult) (err error) {
+func (r *Recorder) UpdateJobRecord(result JobResult) (err error) {
 	var jobErr string
 	if result.Error != nil {
 		jobErr = result.Error.Error()

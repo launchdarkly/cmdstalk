@@ -6,13 +6,13 @@ package broker
 
 import (
 	"fmt"
-	"log"
-	"os"
-	"time"
-
 	"github.com/kr/beanstalk"
 	"github.com/launchdarkly/cmdstalk/bs"
 	"github.com/launchdarkly/cmdstalk/cmd"
+	r "github.com/launchdarkly/cmdstalk/recorder"
+	"log"
+	"os"
+	"time"
 )
 
 const (
@@ -42,36 +42,11 @@ type Broker struct {
 	Tube string
 
 	log     *log.Logger
-	results chan<- *JobResult
-}
-
-type JobResult struct {
-
-	// Buried is true if the job was buried.
-	Buried bool
-
-	// Executed is true if the job command was executed (or attempted).
-	Executed bool
-
-	// ExitStatus of the command; 0 for success.
-	ExitStatus int
-
-	// JobId from beanstalkd.
-	JobId uint64
-
-	// Stdout of the command.
-	Stdout []byte
-
-	// TimedOut indicates the worker exceeded TTR for the job.
-	// Note this is tracked by a timer, separately to beanstalkd.
-	TimedOut bool
-
-	// Error raised while attempting to handle the job.
-	Error error
+	results chan<- *r.JobResult
 }
 
 // New broker instance.
-func New(address, tube string, slot uint64, cmd string, results chan<- *JobResult) (b Broker) {
+func New(address, tube string, slot uint64, cmd string, results chan<- *r.JobResult) (b Broker) {
 	b.Address = address
 	b.Tube = tube
 	b.Cmd = cmd
@@ -113,7 +88,7 @@ func (b *Broker) Run(ticks chan bool) {
 			b.log.Printf("job %d has %d timeouts, burying", job.Id, t)
 			job.Bury()
 			if b.results != nil {
-				b.results <- &JobResult{JobId: job.Id, Buried: true}
+				b.results <- &r.JobResult{JobId: job.Id, Buried: true}
 			}
 			continue
 		}
@@ -126,7 +101,7 @@ func (b *Broker) Run(ticks chan bool) {
 			b.log.Printf("job %d has %d releases, burying", job.Id, releases)
 			job.Bury()
 			if b.results != nil {
-				b.results <- &JobResult{JobId: job.Id, Buried: true}
+				b.results <- &r.JobResult{JobId: job.Id, Buried: true}
 			}
 			continue
 		}
@@ -154,8 +129,8 @@ func (b *Broker) Run(ticks chan bool) {
 	b.log.Println("broker finished")
 }
 
-func (b *Broker) executeJob(job bs.Job, shellCmd string) (result *JobResult, err error) {
-	result = &JobResult{JobId: job.Id, Executed: true}
+func (b *Broker) executeJob(job bs.Job, shellCmd string) (result *r.JobResult, err error) {
+	result = &r.JobResult{JobId: job.Id, Executed: true}
 
 	ttr, err := job.TimeLeft()
 	timer := time.NewTimer(ttr + ttrMargin)
@@ -211,7 +186,7 @@ waitLoop:
 	return
 }
 
-func (b *Broker) handleResult(job bs.Job, result *JobResult) (err error) {
+func (b *Broker) handleResult(job bs.Job, result *r.JobResult) (err error) {
 	if result.TimedOut {
 		b.log.Printf("job %d timed out", job.Id)
 		return

@@ -2,6 +2,7 @@ package broker
 
 import (
 	"github.com/kr/beanstalk"
+	r "github.com/launchdarkly/cmdstalk/recorder"
 	"log"
 	"time"
 )
@@ -20,13 +21,13 @@ type BrokerDispatcher struct {
 	address  string
 	cmd      string
 	conn     *beanstalk.Conn
-	recorder *Recorder
+	recorder *r.Recorder
 	perTube  uint64
 	tubeSet  map[string]bool
 }
 
 func NewBrokerDispatcher(address, mongoUrl, cmd string, perTube uint64) *BrokerDispatcher {
-	recorder, err := NewRecorder(mongoUrl)
+	recorder, err := r.NewJobRecorder(mongoUrl)
 
 	if err != nil {
 		panic("Unable to connect to MongoDB")
@@ -80,7 +81,7 @@ func (bd *BrokerDispatcher) RunAllTubes() (err error) {
 }
 
 func (bd *BrokerDispatcher) runBroker(tube string, slot uint64) {
-	results := make(chan *JobResult)
+	results := make(chan *r.JobResult)
 	go func() {
 		b := New(bd.address, tube, slot, bd.cmd, results)
 		b.Run(nil)
@@ -89,7 +90,7 @@ func (bd *BrokerDispatcher) runBroker(tube string, slot uint64) {
 	go func() {
 		for {
 			jobResult := <-results
-			err := bd.recorder.UpdateRecord(*jobResult)
+			err := bd.recorder.UpdateJobRecord(*jobResult)
 			if err != nil {
 				log.Println(err)
 			}
