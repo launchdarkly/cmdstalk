@@ -21,13 +21,13 @@ type BrokerDispatcher struct {
 	address  string
 	cmd      string
 	conn     *beanstalk.Conn
-	recorder *r.Recorder
+	recorder *r.JobRecorder
 	perTube  uint64
 	tubeSet  map[string]bool
 }
 
 func NewBrokerDispatcher(address, mongoUrl, cmd string, perTube uint64) *BrokerDispatcher {
-	recorder, err := r.NewJobRecorder(mongoUrl)
+	recorder, err := r.New(mongoUrl)
 
 	if err != nil {
 		panic("Unable to connect to MongoDB")
@@ -90,7 +90,7 @@ func (bd *BrokerDispatcher) runBroker(tube string, slot uint64) {
 	go func() {
 		for {
 			jobResult := <-results
-			err := bd.recorder.UpdateJobRecord(*jobResult)
+			err := bd.recorder.UpdateJob(*jobResult)
 			if err != nil {
 				log.Println(err)
 			}

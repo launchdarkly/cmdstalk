@@ -52,11 +52,11 @@ const (
 	timedOut = "timedout"
 )
 
-type Recorder struct {
-	coll *mgo.Collection
+type JobRecorder struct {
+	session *mgo.Session
 }
 
-func NewJobRecorder(url string) (recorder *Recorder, err error) {
+func New(url string) (recorder *JobRecorder, err error) {
 	var session *mgo.Session
 	session, err = mgo.Dial(url)
 
@@ -67,7 +67,7 @@ func NewJobRecorder(url string) (recorder *Recorder, err error) {
 		coll := jobs(db)
 		createIndices(coll)
 
-		return &Recorder{coll}, nil
+		return &JobRecorder{session}, nil
 	}
 }
 
@@ -99,13 +99,16 @@ func createIndices(coll *mgo.Collection) (err error) {
 	return
 }
 
-func (r *Recorder) CreateJobRecord(owner string, id uint64) (err error) {
+func (r *JobRecorder) RecordJob(owner string, id uint64) (err error) {
+	db := r.session.Clone().DB("gonfalon")
+	defer db.Session.Close()
+
 	entry := JobEntry{
 		Status:    pending,
 		Timestamp: ftime.Now(),
 	}
 
-	_, err = r.coll.Upsert(bson.M{"jobId": id}, bson.M{"$set": bson.M{"jobId": id, "owner": owner}, "$push": bson.M{"$each": []JobEntry{entry}, "$position": 0}})
+	_, err = jobs(db).Upsert(bson.M{"jobId": id}, bson.M{"$set": bson.M{"jobId": id, "owner": owner}, "$push": bson.M{"entries": bson.M{"$each": []JobEntry{entry}, "$position": 0}}})
 
 	return
 }
@@ -130,7 +133,10 @@ func exitCode(result JobResult) *int {
 	}
 }
 
-func (r *Recorder) UpdateJobRecord(result JobResult) (err error) {
+func (r *JobRecorder) UpdateJob(result JobResult) (err error) {
+	db := r.session.Clone().DB("gonfalon")
+	defer db.Session.Close()
+
 	var jobErr string
 	if result.Error != nil {
 		jobErr = result.Error.Error()
@@ -144,7 +150,7 @@ func (r *Recorder) UpdateJobRecord(result JobResult) (err error) {
 		Timestamp: ftime.Now(),
 	}
 
-	_, err = r.coll.Upsert(bson.M{"jobId": result.JobId}, bson.M{"$set": bson.M{"jobId": result.JobId}, "$push": bson.M{"entries": entry}})
+	_, err = jobs(db).Upsert(bson.M{"jobId": result.JobId}, bson.M{"$set": bson.M{"jobId": result.JobId}, "$push": bson.M{"entries": entry}})
 
 	return
 }
