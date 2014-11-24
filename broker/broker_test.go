@@ -2,6 +2,7 @@ package broker
 
 import (
 	"bytes"
+	r "github.com/launchdarkly/cmdstalk/recorder"
 	"log"
 	"math/rand"
 	"strconv"
@@ -22,7 +23,7 @@ func TestWorkerSuccess(t *testing.T) {
 	expectStdout := []byte("HELLO WORLD")
 
 	cmd := "tr [a-z] [A-Z]"
-	results := make(chan *JobResult)
+	results := make(chan *r.JobResult)
 	b := New(address, tube, 0, cmd, results)
 
 	ticks := make(chan bool)
@@ -50,7 +51,7 @@ func TestWorkerFailure(t *testing.T) {
 	tube, id := queueJob("hello world", 10, defaultTtr)
 
 	cmd := "false"
-	results := make(chan *JobResult)
+	results := make(chan *r.JobResult)
 	b := New(address, tube, 0, cmd, results)
 
 	ticks := make(chan bool)
@@ -78,7 +79,7 @@ func TestWorkerTimeout(t *testing.T) {
 	tube, id := queueJob("TestWorkerTimeout", 10, ttr)
 
 	cmd := "sleep 4"
-	results := make(chan *JobResult)
+	results := make(chan *r.JobResult)
 	b := New(address, tube, 0, cmd, results)
 
 	ticks := make(chan bool)

@@ -1,0 +1,13 @@
+dependencies:
+  pre:
+    - rm -rf ~/.go_workspace/src/github.com/launchdarkly/cmdstalk
+    - mkdir -p ~/.go_workspace/src/github.com/launchdarkly/
+    - ln -s ~/cmdstalk ~/.go_workspace/src/github.com/launchdarkly/cmdstalk
+    - go get github.com/tools/godep
+  override:
+    - godep go build ./...
+
+test:
+  override:
+    - godep go test ./...
+
